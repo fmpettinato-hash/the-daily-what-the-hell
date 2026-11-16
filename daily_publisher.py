@@ -535,6 +535,34 @@ def _photo_extension(blob: bytes) -> str | None:
     return None
 
 
+
+def _relevant_gear_photo_title(item: dict, filename: str) -> bool:
+    """Reject obvious non-gear imagery before using a Commons photo.
+
+    Commons search ranks text relevance, not whether an image depicts usable
+    equipment. A word like "goggles" in a costume photo is not evidence of
+    protective eyewear. This is a conservative title check, not a certification.
+    """
+    title = filename.removeprefix('File:').lower().replace('_', ' ')
+    bad_contexts = (
+        'jenny everywhere', 'cosplay', 'costume', 'halloween', 'scarf',
+        'fan art', 'fictional', 'cartoon', 'anime', 'character',
+        'fashion show', 'movie poster', 'portrait', 'comic',
+        'museum exhibit', 'advertising poster',
+    )
+    if any(bad in title for bad in bad_contexts):
+        return False
+    if not any(k in title for k in item['photo_keywords']):
+        return False
+    if item['title'] == 'Protective safety glasses':
+        # Generic goggles can be swimwear, fashion or a costume accessory.
+        # Require explicit occupational safety context in the file title.
+        eyewear = ('glasses', 'goggles', 'spectacles', 'eyewear')
+        safety = ('safety', 'protective', 'industrial', 'ppe',
+                  'eye protection', 'workshop', 'work goggles')
+        return any(k in title for k in eyewear) and any(k in title for k in safety)
+    return True
+
 def _wikimedia_photo(item: dict, output_dir: Path) -> dict | None:
     """Find an appropriately licensed REAL photograph and copy its bytes into the site.
 
@@ -558,7 +586,7 @@ def _wikimedia_photo(item: dict, output_dir: Path) -> dict | None:
             title = page.get('title', '').lower()
             if any(bad in title for bad in ('logo', 'icon', 'vector', 'drawing', 'diagram', 'screenshot', 'illustration', 'emblem', 'svg')):
                 continue
-            if not any(k in title for k in item['photo_keywords']):
+            if not _relevant_gear_photo_title(item, page.get('title', '')):
                 continue
             infos = page.get('imageinfo') or []
             if not infos:
