@@ -24,7 +24,7 @@ import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo
 
 HST = ZoneInfo('Pacific/Honolulu')
-UA = 'DailyWhatTheHell/1.0 (public news reader; links to original publishers)'
+UA = 'TheDailyWhatTheHell/1.1 (https://fmpettinato-hash.github.io/the-daily-what-the-hell/; public news and photo attribution)'
 MAX_BYTES = 1_500_000
 TIMEOUT = 12
 
@@ -80,15 +80,405 @@ APOCALYPSE = [
     ('Survival Status: Caffeinated', 'No confirmed fictional zombies. Plenty of ordinary nonsense. The difference is mostly paperwork.', 'Check the radio and rotate the power bank.'),
 ]
 
-JAY_TIPS = [
-    ('Rainproof is not the same as waterproof', 'Check the actual IP rating before leaving a radio or power bank in farm rain. “Weather-resistant” is marketing, not a diving certificate.', 'https://www.weather.gov/safety/lightning'),
-    ('Charge the battery before the clouds roll in', 'A solar panel can top up a battery in good sun, but small built-in panels are slow. A charged power bank is the real backup.', 'https://www.ready.gov/power-outages'),
-    ('Hand-crank radios: useful, not magical', 'The crank is an emergency backup for short listening or light use. It is not a practical substitute for charging a modern phone.', 'https://www.weather.gov/nwr/'),
-    ('Keep a radio that works when the power does not', 'A battery-operated weather radio and spare batteries are more useful than a fancy gadget that needs the generator first.', 'https://www.weather.gov/nwr/'),
-    ('Water first, gadgets second', 'Store clean drinking water in sealed containers. On a farm, keeping electronics dry and water safe are separate jobs.', 'https://www.ready.gov/water'),
-    ('Lightning does not care about your playlist', 'When thunder is audible, leave exposed fields and get into a substantial building or hard-topped vehicle.', 'https://www.weather.gov/safety/lightning'),
-    ('The dry-bag rule', 'A dry bag or sealed pouch adds protection to gear that lacks a verified water-resistance rating. Keep charging ports dry before connecting cables.', 'https://www.ready.gov/kit'),
-]
+# Sixty-five DIFFERENT practical gear items, selected by Hawaiʻi-local date.
+# This is a category spotlight, NOT an unverified product endorsement or price quote.
+# It covers power, radio, rain, lighting, field safety, water and preparedness.
+JAY_GEAR_CATALOG = [{'title': 'Hand-crank emergency radio',
+  'why': 'Listen for alerts when power is unavailable.',
+  'check': 'Check AM/FM reception, NOAA weather-band support, crank output and rain protection.',
+  'photo_search': 'emergency crank radio',
+  'photo_keywords': ('radio', 'eton'),
+  'reference': 'https://www.weather.gov/nwr/'},
+ {'title': 'Portable AM/FM radio',
+  'why': 'Keep local broadcasts available without using a phone.',
+  'check': 'Check reception, replaceable batteries and speaker volume.',
+  'photo_search': 'portable radio transistor',
+  'photo_keywords': ('radio', 'transistor'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'NOAA weather radio',
+  'why': 'Receive official weather broadcasts when cellular service is unreliable.',
+  'check': 'Check weather-band coverage, alerts and battery backup.',
+  'photo_search': 'weather alert radio',
+  'photo_keywords': ('radio', 'weather'),
+  'reference': 'https://www.weather.gov/nwr/'},
+ {'title': 'USB-C power bank',
+  'why': 'Recharge a phone while the generator is off.',
+  'check': 'Compare usable watt-hours, output watts, USB-C PD and rain protection.',
+  'photo_search': 'portable power bank battery',
+  'photo_keywords': ('powerbank', 'power bank', 'anker'),
+  'reference': 'https://www.ready.gov/power-outages'},
+ {'title': 'Solar power bank',
+  'why': 'Add slow solar top-ups to an ordinary phone backup battery.',
+  'check': 'Treat tiny built-in panels as emergency trickle chargers, not all-day power.',
+  'photo_search': 'solar power bank',
+  'photo_keywords': ('solar', 'powerbank'),
+  'reference': 'https://www.ready.gov/power-outages'},
+ {'title': 'Portable power station',
+  'why': 'Run small devices when there is no outlet nearby.',
+  'check': 'Check watt-hours, AC output, charging speed and whether it must stay dry.',
+  'photo_search': 'Jackery Explorer portable power station',
+  'photo_keywords': ('jackery', 'explorer', 'ecoflow'),
+  'reference': 'https://www.ready.gov/power-outages'},
+ {'title': 'Folding solar panel',
+  'why': 'Harvest daylight to charge compatible batteries.',
+  'check': 'Verify output, connectors, shade tolerance and water-exposure rating.',
+  'photo_search': 'folding portable solar panel',
+  'photo_keywords': ('solar', 'panel'),
+  'reference': 'https://www.energy.gov/energysaver/solar-energy'},
+ {'title': 'Solar charge controller',
+  'why': 'Protect a compatible battery while charging from a solar panel.',
+  'check': 'Match battery chemistry, voltage, input limits and connector type.',
+  'photo_search': 'solar charge controller',
+  'photo_keywords': ('controller', 'solar'),
+  'reference': 'https://www.energy.gov/energysaver/solar-energy'},
+ {'title': 'Waterproof dry bag',
+  'why': 'Keep a radio, cables and clothing away from farm rain.',
+  'check': 'Check the closure method and actual immersion rating; do not assume all dry bags are submersible.',
+  'photo_search': 'waterproof dry bag camping',
+  'photo_keywords': ('dry bag', 'drybag'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Waterproof phone pouch',
+  'why': 'Protect a phone from rain and splashes.',
+  'check': 'Check IP rating, seal quality and whether the screen works through the pouch.',
+  'photo_search': 'waterproof phone pouch',
+  'photo_keywords': ('phone', 'pouch', 'waterproof'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Waterproof hard case',
+  'why': 'Transport delicate electronics in a tougher sealed enclosure.',
+  'check': "Check gasket condition, latches and the case's tested IP rating.",
+  'photo_search': 'Pelican waterproof case',
+  'photo_keywords': ('pelican', 'case'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Backpack rain cover',
+  'why': 'Keep a work backpack drier during sudden showers.',
+  'check': 'Check pack volume, seam coverage and how securely it attaches.',
+  'photo_search': 'backpack rain cover',
+  'photo_keywords': ('backpack', 'cover'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Rechargeable headlamp',
+  'why': 'Keep both hands free while checking equipment after dark.',
+  'check': 'Check runtime at useful brightness, strap comfort and water resistance.',
+  'photo_search': 'LED headlamp camping',
+  'photo_keywords': ('headlamp', 'headlight'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'LED flashlight',
+  'why': 'Provide dependable light when the generator is off.',
+  'check': 'Check replaceable batteries, beam modes and water resistance.',
+  'photo_search': 'LED flashlight torch',
+  'photo_keywords': ('flashlight', 'torch'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Rechargeable camping lantern',
+  'why': 'Light a work area without using a phone flashlight.',
+  'check': 'Check actual low-mode runtime and charging port protection.',
+  'photo_search': 'camping LED lantern',
+  'photo_keywords': ('lantern',),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Solar camping lantern',
+  'why': 'Offer a small area light with daytime charging.',
+  'check': "Compare solar recharge time with the battery's usable runtime.",
+  'photo_search': 'solar camping lantern',
+  'photo_keywords': ('lantern', 'solar'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Magnetic work light',
+  'why': 'Stick task lighting to a suitable metal surface for repairs.',
+  'check': 'Check magnet strength, runtime and whether the housing tolerates rain.',
+  'photo_search': 'magnetic LED work light',
+  'photo_keywords': ('work light', 'magnetic'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Rechargeable AA batteries',
+  'why': 'Keep compatible radios and flashlights running without disposable cells.',
+  'check': 'Check chemistry, device compatibility and proper storage.',
+  'photo_search': 'rechargeable AA batteries',
+  'photo_keywords': ('battery', 'batteries'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'AA battery charger',
+  'why': 'Recharge standard cells when AC or solar power is available.',
+  'check': 'Check chemistry support and whether each cell charges independently.',
+  'photo_search': 'AA battery charger',
+  'photo_keywords': ('charger', 'battery'),
+  'reference': 'https://www.ready.gov/power-outages'},
+ {'title': 'Battery storage case',
+  'why': 'Prevent loose spare batteries from contacting metal objects.',
+  'check': 'Use a dedicated case and protect terminals from short circuits.',
+  'photo_search': 'battery storage box',
+  'photo_keywords': ('battery', 'case'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': '12-volt car USB charger',
+  'why': 'Charge a phone from a vehicle when needed.',
+  'check': 'Check USB-C PD wattage and whether the vehicle socket is powered with engine off.',
+  'photo_search': 'car USB charger',
+  'photo_keywords': ('car', 'charger'),
+  'reference': 'https://www.ready.gov/power-outages'},
+ {'title': 'Portable vehicle jump starter',
+  'why': 'Help start a compatible vehicle with a weak battery.',
+  'check': "Match engine size and follow the manufacturer's safe connection procedure.",
+  'photo_search': 'portable car jump starter',
+  'photo_keywords': ('jump', 'starter'),
+  'reference': 'https://www.ready.gov/car'},
+ {'title': 'Portable tire inflator',
+  'why': 'Restore tire pressure without finding an air station.',
+  'check': 'Check power source, duty cycle and gauge accuracy.',
+  'photo_search': 'portable tire inflator',
+  'photo_keywords': ('inflator', 'compressor'),
+  'reference': 'https://www.ready.gov/car'},
+ {'title': 'Automotive fuse assortment',
+  'why': 'Replace a correctly rated blown vehicle fuse.',
+  'check': 'Use the exact specified amperage; never up-rate a fuse to stop it blowing.',
+  'photo_search': 'automotive blade fuses',
+  'photo_keywords': ('fuse', 'fuses'),
+  'reference': 'https://www.ready.gov/car'},
+ {'title': 'Handheld two-way radio',
+  'why': 'Communicate nearby when cellular reception is unreliable.',
+  'check': 'Check legal channel rules, range under terrain and battery endurance.',
+  'photo_search': 'handheld two way radio walkie talkie',
+  'photo_keywords': ('walkie', 'radio'),
+  'reference': 'https://www.ready.gov/plan'},
+ {'title': 'Handheld GPS receiver',
+  'why': 'Navigate without relying entirely on a cellular data connection.',
+  'check': 'Download maps beforehand and carry spare power.',
+  'photo_search': 'Garmin handheld GPS receiver',
+  'photo_keywords': ('garmin', 'gps'),
+  'reference': 'https://www.ready.gov/plan'},
+ {'title': 'Baseplate compass',
+  'why': 'Provide simple backup navigation when batteries are gone.',
+  'check': 'Check that the needle moves freely and learn to use it with a map.',
+  'photo_search': 'baseplate compass navigation',
+  'photo_keywords': ('compass',),
+  'reference': 'https://www.ready.gov/plan'},
+ {'title': 'Emergency whistle',
+  'why': 'Signal for attention without draining a battery.',
+  'check': 'Choose a durable whistle that can be reached quickly.',
+  'photo_search': 'emergency safety whistle',
+  'photo_keywords': ('whistle',),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Signal mirror',
+  'why': 'Reflect sunlight to attract attention from a distance.',
+  'check': 'Practice aiming and store it where it will not scratch.',
+  'photo_search': 'emergency signal mirror',
+  'photo_keywords': ('mirror', 'signal'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'High-visibility safety vest',
+  'why': 'Improve visibility around farm vehicles and machinery.',
+  'check': 'Check reflective strip placement and appropriate fit.',
+  'photo_search': 'high visibility reflective vest',
+  'photo_keywords': ('vest', 'reflective'),
+  'reference': 'https://www.osha.gov/personal-protective-equipment'},
+ {'title': 'Protective safety glasses',
+  'why': 'Keep dust and flying debris away from the eyes.',
+  'check': 'Check impact markings and fit for the task.',
+  'photo_search': 'protective safety glasses',
+  'photo_keywords': ('glasses', 'goggles'),
+  'reference': 'https://www.osha.gov/eye-and-face-protection'},
+ {'title': 'Work gloves',
+  'why': 'Protect hands during suitable farm and repair tasks.',
+  'check': 'Match cut, abrasion and grip protection to the job; avoid loose gloves near rotating equipment.',
+  'photo_search': 'work gloves protective',
+  'photo_keywords': ('gloves',),
+  'reference': 'https://www.osha.gov/hand-protection'},
+ {'title': 'Rubber work boots',
+  'why': 'Keep feet drier in muddy or wet conditions.',
+  'check': 'Check traction, fit and whether safety toes are needed.',
+  'photo_search': 'rubber Wellington boots',
+  'photo_keywords': ('boots', 'wellington'),
+  'reference': 'https://www.osha.gov/personal-protective-equipment'},
+ {'title': 'Rain poncho',
+  'why': 'Provide a quick layer during sudden downpours.',
+  'check': 'Check hood coverage, ventilation and how it behaves around machinery.',
+  'photo_search': 'rain poncho waterproof',
+  'photo_keywords': ('poncho',),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Wide-brim sun hat',
+  'why': 'Add shade for long hours in direct sun.',
+  'check': 'Check brim coverage, ventilation and a secure fit in wind.',
+  'photo_search': 'wide brim sun hat',
+  'photo_keywords': ('hat', 'sun'),
+  'reference': 'https://www.cdc.gov/niosh/heat-stress/about/index.html'},
+ {'title': 'Cooling towel',
+  'why': 'Provide temporary cooling when working in heat.',
+  'check': 'Pair with shade, water and rest; do not treat a towel as heat-illness protection by itself.',
+  'photo_search': 'cooling towel sports',
+  'photo_keywords': ('towel', 'cooling'),
+  'reference': 'https://www.cdc.gov/niosh/heat-stress/about/index.html'},
+ {'title': 'Insulated water bottle',
+  'why': 'Keep drinking water accessible during outdoor work.',
+  'check': "Choose a cleanable bottle sized for the day's conditions.",
+  'photo_search': 'insulated stainless steel water bottle',
+  'photo_keywords': ('bottle', 'flask'),
+  'reference': 'https://www.ready.gov/water'},
+ {'title': 'Collapsible water container',
+  'why': 'Carry extra potable water when a tap is far away.',
+  'check': 'Confirm food-safe material, capacity and cleaning instructions.',
+  'photo_search': 'collapsible water container camping',
+  'photo_keywords': ('water', 'container'),
+  'reference': 'https://www.ready.gov/water'},
+ {'title': 'Portable water filter',
+  'why': 'Filter appropriate untreated water when needed.',
+  'check': 'Check what pathogens the filter actually removes; many filters do not remove viruses.',
+  'photo_search': 'portable water filter camping',
+  'photo_keywords': ('filter', 'water'),
+  'reference': 'https://www.cdc.gov/healthy-water-drinking/about/about-water-treatment-options.html'},
+ {'title': 'Water purification tablets',
+  'why': 'Provide a lightweight emergency water-treatment option.',
+  'check': 'Follow label directions and understand chemical-treatment limitations.',
+  'photo_search': 'water purification tablets',
+  'photo_keywords': ('purification', 'tablet'),
+  'reference': 'https://www.cdc.gov/healthy-water-drinking/about/about-water-treatment-options.html'},
+ {'title': 'First-aid kit',
+  'why': 'Keep common injury supplies in one accessible location.',
+  'check': 'Check the contents and restock used or expired supplies.',
+  'photo_search': 'first aid kit red',
+  'photo_keywords': ('first aid', 'kit'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Elastic bandage',
+  'why': 'Support a suitable minor strain or hold a dressing in place.',
+  'check': 'Check size, cleanliness and avoid wrapping too tightly.',
+  'photo_search': 'elastic bandage first aid',
+  'photo_keywords': ('bandage',),
+  'reference': 'https://www.redcross.org/get-help/how-to-prepare-for-emergencies/survival-kit-supplies.html'},
+ {'title': 'Fine-tip tweezers',
+  'why': 'Remove small splinters when appropriate.',
+  'check': 'Keep them clean and seek care for deep or infected wounds.',
+  'photo_search': 'tweezers tool',
+  'photo_keywords': ('tweezers',),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Emergency thermal blanket',
+  'why': 'Reduce heat loss during an emergency.',
+  'check': 'Know that thin foil blankets are wind barriers, not complete shelter.',
+  'photo_search': 'emergency foil space blanket',
+  'photo_keywords': ('blanket', 'space'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Mosquito head net',
+  'why': 'Keep biting insects away from the face during field work.',
+  'check': 'Check mesh density and fit over a brimmed hat.',
+  'photo_search': 'mosquito head net',
+  'photo_keywords': ('mosquito', 'net'),
+  'reference': 'https://www.cdc.gov/mosquitoes/prevention/index.html'},
+ {'title': 'Mosquito netting',
+  'why': 'Add a physical insect barrier around a resting area.',
+  'check': 'Inspect for holes and secure edges so insects cannot enter.',
+  'photo_search': 'mosquito net bed',
+  'photo_keywords': ('mosquito', 'net'),
+  'reference': 'https://www.cdc.gov/mosquitoes/prevention/index.html'},
+ {'title': 'Sunscreen bottle',
+  'why': 'Keep broad-spectrum sun protection handy.',
+  'check': 'Check SPF and reapplication directions; clothing and shade also matter.',
+  'photo_search': 'sunscreen lotion bottle',
+  'photo_keywords': ('sunscreen',),
+  'reference': 'https://www.cdc.gov/skin-cancer/sun-safety/index.html'},
+ {'title': 'Portable weather meter',
+  'why': 'Measure local wind and other conditions near the worksite.',
+  'check': "Check sensor accuracy and don't replace official alerts with a handheld reading.",
+  'photo_search': 'handheld anemometer weather meter',
+  'photo_keywords': ('anemometer', 'weather'),
+  'reference': 'https://www.weather.gov/safety/'},
+ {'title': 'Rain gauge',
+  'why': 'Track rainfall around the farm over time.',
+  'check': 'Place it away from roof runoff and read at consistent intervals.',
+  'photo_search': 'rain gauge garden',
+  'photo_keywords': ('rain', 'gauge'),
+  'reference': 'https://www.weather.gov/'},
+ {'title': 'Outdoor thermometer',
+  'why': 'Check ambient conditions where work is being done.',
+  'check': 'Keep sensors shaded from direct sun for useful air-temperature readings.',
+  'photo_search': 'outdoor thermometer',
+  'photo_keywords': ('thermometer',),
+  'reference': 'https://www.cdc.gov/niosh/heat-stress/about/index.html'},
+ {'title': 'Battery-powered fan',
+  'why': 'Move air in a sheltered space when power is limited.',
+  'check': 'Check runtime, charging requirements and whether conditions are safe for fan use.',
+  'photo_search': 'portable rechargeable fan',
+  'photo_keywords': ('fan', 'portable'),
+  'reference': 'https://www.ready.gov/power-outages'},
+ {'title': 'Fire extinguisher',
+  'why': 'Keep appropriate fire response equipment accessible.',
+  'check': 'Match extinguisher class to hazards and know when to evacuate instead.',
+  'photo_search': 'portable fire extinguisher',
+  'photo_keywords': ('extinguisher',),
+  'reference': 'https://www.ready.gov/home-fires'},
+ {'title': 'Smoke alarm',
+  'why': 'Provide early warning of smoke inside a building.',
+  'check': 'Test alarms and replace batteries or units as directed.',
+  'photo_search': 'smoke detector alarm',
+  'photo_keywords': ('smoke', 'detector'),
+  'reference': 'https://www.ready.gov/home-fires'},
+ {'title': 'Carbon monoxide alarm',
+  'why': 'Warn about dangerous carbon monoxide near enclosed spaces.',
+  'check': 'Never operate a generator indoors or near openings; an alarm is not a substitute for ventilation.',
+  'photo_search': 'carbon monoxide detector alarm',
+  'photo_keywords': ('carbon', 'detector'),
+  'reference': 'https://www.cdc.gov/carbon-monoxide/about/index.html'},
+ {'title': 'Outdoor-rated extension cord',
+  'why': 'Reach a suitable outlet when the generator is running.',
+  'check': 'Check load rating and outdoor suitability; keep connectors out of standing water.',
+  'photo_search': 'outdoor extension cord',
+  'photo_keywords': ('extension', 'cord'),
+  'reference': 'https://www.esfi.org/'},
+ {'title': 'Surge-protected power strip',
+  'why': 'Protect compatible electronics against some power disturbances.',
+  'check': 'Check load limits; never daisy-chain power strips or use them in rain.',
+  'photo_search': 'surge protector power strip',
+  'photo_keywords': ('surge', 'power strip'),
+  'reference': 'https://www.esfi.org/'},
+ {'title': 'Solar motion-sensor light',
+  'why': 'Light a walkway or entrance without a nearby outlet.',
+  'check': 'Check nighttime runtime, sensor range and weather rating.',
+  'photo_search': 'solar motion sensor light',
+  'photo_keywords': ('solar', 'light'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Waterproof field notebook',
+  'why': 'Record observations even when hands and surroundings are damp.',
+  'check': 'Check paper type and use a compatible pencil or pen.',
+  'photo_search': 'Rite in the Rain notebook',
+  'photo_keywords': ('notebook', 'rain'),
+  'reference': 'https://www.ready.gov/plan'},
+ {'title': 'Permanent marker',
+  'why': 'Label containers, batteries and emergency supplies.',
+  'check': 'Choose ink suitable for the surface and moisture conditions.',
+  'photo_search': 'permanent marker pen',
+  'photo_keywords': ('marker',),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Duct tape roll',
+  'why': 'Handle temporary noncritical repairs and labeling.',
+  'check': 'Do not use tape as a substitute for rated electrical or structural repairs.',
+  'photo_search': 'duct tape roll',
+  'photo_keywords': ('tape', 'duct'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Paracord bundle',
+  'why': 'Tie down light gear and organize camp supplies.',
+  'check': 'Check working-load limits; paracord is not climbing or lifting rope.',
+  'photo_search': 'paracord rope',
+  'photo_keywords': ('paracord',),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Carabiner clip',
+  'why': 'Keep small tools or keys attached to a pack.',
+  'check': 'Do not use non-rated accessory clips for climbing or life safety.',
+  'photo_search': 'carabiner clip',
+  'photo_keywords': ('carabiner',),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Ratchet tie-down straps',
+  'why': 'Secure suitable loads during transport.',
+  'check': 'Check working load limits and inspect straps for damage.',
+  'photo_search': 'ratchet tie down straps',
+  'photo_keywords': ('ratchet', 'straps'),
+  'reference': 'https://www.ready.gov/car'},
+ {'title': 'Heavy-duty storage tote',
+  'why': 'Keep emergency supplies organized and protected from splashes.',
+  'check': 'Check lid seal, stacking strength and whether contents need additional dry bags.',
+  'photo_search': 'plastic storage tote box',
+  'photo_keywords': ('storage', 'box'),
+  'reference': 'https://www.ready.gov/kit'},
+ {'title': 'Waterproof Bluetooth speaker',
+  'why': 'Play music outdoors without risking the phone.',
+  'check': 'Check verified IP rating and charging-port protection; rainproof is not automatically submersible.',
+  'photo_search': 'waterproof bluetooth speaker',
+  'photo_keywords': ('speaker', 'bluetooth'),
+  'reference': 'https://www.ready.gov/kit'}]
+
+
+def daily_gear(issue: datetime) -> dict:
+    # 17 is coprime with 65: each item appears once in a 65-day cycle.
+    return JAY_GEAR_CATALOG[(issue.date().toordinal() * 17) % len(JAY_GEAR_CATALOG)]
+
 
 RECIPES = [
     ('Ginger-Lime Chicken & Rice Bowls', '2', '25 minutes', 'Chicken breast, cooked rice, cucumber, ginger, lime, olive oil and optional cilantro.', 'Cook chicken thoroughly with ginger and a little oil. Serve over rice with cucumber and lime. Skip spicy sauces if your stomach has filed a complaint.'),
@@ -133,6 +523,125 @@ def strip_markup(raw: str) -> str:
     raw = re.sub(r'<(script|style)\b[^>]*>.*?</\1>', '', raw or '', flags=re.I | re.S)
     raw = re.sub(r'<[^>]*>', ' ', raw)
     return re.sub(r'\s+', ' ', unescape(raw)).strip()
+
+
+def _photo_extension(blob: bytes) -> str | None:
+    if blob.startswith(b'\xff\xd8\xff'):
+        return '.jpg'
+    if blob.startswith(b'\x89PNG\r\n\x1a\n'):
+        return '.png'
+    if blob[:4] == b'RIFF' and blob[8:12] == b'WEBP':
+        return '.webp'
+    return None
+
+
+def _wikimedia_photo(item: dict, output_dir: Path) -> dict | None:
+    """Find an appropriately licensed REAL photograph and copy its bytes into the site.
+
+    The live website uses a local relative image path, so readers see the
+    photograph even if Wikimedia is temporarily unavailable afterward.
+    """
+    api = 'https://commons.wikimedia.org/w/api.php'
+    for term in (item['photo_search'], item['title'], item['photo_keywords'][0]):
+        params = {
+            'action': 'query', 'generator': 'search', 'gsrsearch': 'filetype:bitmap ' + term,
+            'gsrnamespace': 6, 'gsrlimit': 20, 'prop': 'imageinfo',
+            'iiprop': 'url|mime|extmetadata', 'iiurlwidth': 720,
+            'format': 'json', 'formatversion': 2,
+        }
+        try:
+            payload = get_json(api + '?' + urlencode(params))
+        except (OSError, ValueError, HTTPError, URLError, TimeoutError):
+            continue
+        pages = payload.get('query', {}).get('pages', [])
+        for page in pages:
+            title = page.get('title', '').lower()
+            if any(bad in title for bad in ('logo', 'icon', 'vector', 'drawing', 'diagram', 'screenshot', 'illustration', 'emblem', 'svg')):
+                continue
+            if not any(k in title for k in item['photo_keywords']):
+                continue
+            infos = page.get('imageinfo') or []
+            if not infos:
+                continue
+            info = infos[0]
+            if info.get('mime') not in ('image/jpeg', 'image/png', 'image/webp'):
+                continue
+            meta = info.get('extmetadata') or {}
+            license_name = strip_markup(meta.get('LicenseShortName', {}).get('value', ''))[:80]
+            upper = license_name.upper()
+            if not ('CC BY' in upper or 'CC0' in upper or 'PUBLIC DOMAIN' in upper or upper.startswith('PD-')):
+                continue
+            src = info.get('thumburl') or info.get('url', '')
+            source = info.get('descriptionurl', '')
+            if urlparse(src).hostname != 'upload.wikimedia.org' or urlparse(source).hostname != 'commons.wikimedia.org':
+                continue
+            try:
+                blob = http_get(src)
+            except (OSError, ValueError, HTTPError, URLError, TimeoutError):
+                continue
+            ext = _photo_extension(blob)
+            if not ext or len(blob) < 5000 or len(blob) > 1_000_000:
+                continue
+            output_dir.mkdir(parents=True, exist_ok=True)
+            filename = 'jay-gear-photo' + ext
+            (output_dir / filename).write_bytes(blob)
+            artist = strip_markup(meta.get('Artist', {}).get('value', ''))[:100] or 'Wikimedia Commons contributor'
+            license_url = strip_markup(meta.get('LicenseUrl', {}).get('value', ''))
+            if urlparse(license_url).scheme != 'https':
+                license_url = source
+            return {
+                'item': item, 'src': filename,
+                'alt': 'Photograph of ' + item['title'].lower(),
+                'caption': page.get('title', '').removeprefix('File:').rsplit('.', 1)[0].replace('_', ' ')[:130],
+                'artist': artist, 'license': license_name,
+                'license_url': license_url, 'source': source,
+            }
+    return None
+
+
+def select_daily_gear_photo(issue: datetime, output_dir: Path) -> dict:
+    """Choose a different item daily and record recent features in the Pages artifact.
+
+    The public history file is read back on the next run. If GitHub Pages is
+    unavailable, deterministic date ordering still avoids intentional repeats.
+    """
+    history_url = ('https://fmpettinato-hash.github.io/the-daily-what-the-hell/'
+                   'jay-gear-history.json?issue=' + issue.date().isoformat())
+    try:
+        old = json.loads(http_get(history_url).decode('utf-8'))
+        if not isinstance(old, list):
+            old = []
+        old = [x for x in old if isinstance(x, dict) and isinstance(x.get('title'), str)
+               and isinstance(x.get('date'), str)][-65:]
+    except (OSError, ValueError, HTTPError, URLError, TimeoutError):
+        old = []
+    today = issue.date().isoformat()
+    already_today = next((x['title'] for x in reversed(old) if x['date'] == today), None)
+    recent = {x['title'] for x in old[-64:] if x['date'] != today}
+    base = (issue.date().toordinal() * 17) % len(JAY_GEAR_CATALOG)
+    # Same-day reruns keep the same item; otherwise favor today's scheduled item.
+    ordered = ([g for g in JAY_GEAR_CATALOG if g['title'] == already_today]
+               if already_today else [])
+    ordered += [JAY_GEAR_CATALOG[(base + offset) % len(JAY_GEAR_CATALOG)]
+                for offset in range(len(JAY_GEAR_CATALOG))]
+    seen = set()
+    attempts = 0
+    for item in ordered:
+        if item['title'] in seen or (item['title'] in recent and item['title'] != already_today):
+            continue
+        seen.add(item['title'])
+        attempts += 1
+        if attempts > 8:
+            break
+        found = _wikimedia_photo(item, output_dir)
+        if found:
+            history = [x for x in old if x['date'] != today]
+            history.append({'date': today, 'title': item['title']})
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / 'jay-gear-history.json').write_text(
+                json.dumps(history[-65:], ensure_ascii=False, indent=2), encoding='utf-8')
+            return found
+    raise RuntimeError('Could not verify a real, licensed photograph for a new Jay gear item; keeping prior edition online.')
 
 
 def parse_timestamp(value: str) -> datetime | None:
@@ -354,13 +863,34 @@ def apocalypse_html(issue: datetime) -> str:
             '<p class="tiny-disclaimer">For actual alerts, consult NWS, Hawaiʻi County Civil Defense and other official agencies.</p></article>')
 
 
-def jay_html(issue: datetime) -> str:
-    title, tip, url = JAY_TIPS[issue.toordinal() % len(JAY_TIPS)]
+def jay_html(issue: datetime, gear_photo: dict) -> str:
+    item = gear_photo['item']
+    if item['title'] not in {g['title'] for g in JAY_GEAR_CATALOG}:
+        raise ValueError('Jay gear photo is not linked to a catalog item')
+    picture = (
+        '<figure class="jay-gear-figure" style="margin:14px 0 12px;">'
+        '<div class="jay-gear-frame" style="width:100%;max-width:650px;'
+        'margin:auto;background-color:#f4eee3;border-radius:12px;overflow:hidden;">'
+        f'<img class="jay-gear-photo" src="{escape(gear_photo["src"], quote=True)}" '
+        f'alt="{escape(gear_photo["alt"], quote=True)}" '
+        'loading="lazy" decoding="async" width="720" height="540" '
+        'style="display:block;width:100%;height:auto;max-height:420px;object-fit:contain;"/>'
+        '</div>'
+        f'<figcaption class="small" style="margin-top:6px;line-height:1.5;">'
+        f'Photograph: {escape(gear_photo["caption"])}. '
+        f'Credit: {escape(gear_photo["artist"])} · '
+        f'<a href="{escape(gear_photo["license_url"], quote=True)}" target="_blank" rel="noopener noreferrer">{escape(gear_photo["license"])}</a> · '
+        f'<a href="{escape(gear_photo["source"], quote=True)}" target="_blank" rel="noopener noreferrer">Original photograph and license</a>. '
+        'Photograph is an example of the gear category, not a tested product endorsement.</figcaption></figure>'
+    )
     return ('<h2 class="banner" id="jay">⚡ Jay’s Corner: Farm Survival &amp; Preparedness</h2>'
-            '<article class="feature"><div class="eyebrow">Farm life • Practical gear, not marketing magic</div>'
-            f'<h3>{escape(title)}</h3><p>{escape(tip)}</p>'
-            '<p>Jay’s farm gets rain, sun and unpredictable access to generator power. Gear needs to work in those conditions, not just look impressive in a product photo.</p>'
-            f'<a class="source" href="{escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">Preparedness reference ↗</a></article>')
+            '<article class="feature"><div class="eyebrow">DAILY GEAR SPOTLIGHT • One different item each day</div>'
+            f'<h3>{escape(item["title"])}</h3>' + picture +
+            f'<p><strong>Why it matters on the farm:</strong> {escape(item["why"])}</p>'
+            f'<p><strong>What to check:</strong> {escape(item["check"])}</p>'
+            '<p class="small">Practical gear guidance, not a claim that any pictured model has been tested or is currently for sale. '
+            'Always verify the exact model’s specifications and water-resistance rating.</p>'
+            f'<a class="source" href="{escape(item["reference"], quote=True)}" target="_blank" rel="noopener noreferrer">Read the preparedness reference ↗</a></article>')
 
 
 def horoscope_html(issue: datetime) -> str:
@@ -372,7 +902,7 @@ def horoscope_html(issue: datetime) -> str:
             '<p class="small">Astrology is entertainment. The only thing we can reliably forecast is another round of nonsense.</p></article>')
 
 
-def build(template: str, issue: datetime, feeds: dict[str, list[dict]]) -> tuple[str, int]:
+def build(template: str, issue: datetime, feeds: dict[str, list[dict]], gear_photo: dict) -> tuple[str, int]:
     if not re.search(r'<main>.*?</main>', template, flags=re.S):
         raise ValueError('Locked template is missing its main section')
     if template.count('class="approved-mast-art"') != 1:
@@ -387,7 +917,7 @@ def build(template: str, issue: datetime, feeds: dict[str, list[dict]]) -> tuple
             '<aside class="editorial-eye-roll" aria-label="Editor’s opening comment"><strong>☕ From the editor’s desk</strong>'
             'The news has been gathered. The coffee is doing its best. We are all making questionable decisions, but at least these headlines have links.</aside>'
             + new_news + weather_html(issue) + travel_html(feeds, issue, template)
-            + food_html(issue) + events_html() + apocalypse_html(issue) + jay_html(issue) + horoscope_html(issue)
+            + food_html(issue) + events_html() + apocalypse_html(issue) + jay_html(issue, gear_photo) + horoscope_html(issue)
             + '</main>')
     html = re.sub(r'<main>.*?</main>', lambda m: main, template, count=1, flags=re.S)
     date_full = issue.strftime('%A, %B %-d, %Y')
@@ -408,8 +938,8 @@ def build(template: str, issue: datetime, feeds: dict[str, list[dict]]) -> tuple
     b = re.search(banner_pattern, html)
     if not a or not b or a.group(0) != b.group(0):
         raise ValueError('LOCK VIOLATION: original masthead changed')
-    if 'class="destination-photo"' not in html or 'id="weather"' not in html:
-        raise ValueError('Required travel photos or two-island weather section missing')
+    if 'class="destination-photo"' not in html or 'id="weather"' not in html or 'class="jay-gear-photo"' not in html:
+        raise ValueError('Required travel photos, Jay gear photo, or two-island weather section missing')
     return html, count
 
 
@@ -428,10 +958,19 @@ def main() -> None:
             feeds[k] = [{**x, 'time': parse_timestamp(x['time'])} for x in items]
     else:
         feeds = load_feeds()
-    html, count = build(template, now, feeds)
+    out = Path(args.output)
+    if args.test_fixture:
+        # Explicitly fake photo only for offline test fixtures, never for a live issue.
+        gear_photo = {'item': daily_gear(now), 'src': 'test-photo-placeholder.jpg',
+                      'alt': 'Offline test photo placeholder', 'caption': 'Test fixture',
+                      'artist': 'Test fixture', 'license': 'CC0',
+                      'license_url': 'https://creativecommons.org/publicdomain/zero/1.0/',
+                      'source': 'https://commons.wikimedia.org/'}
+    else:
+        gear_photo = select_daily_gear_photo(now, out.parent)
+    html, count = build(template, now, feeds, gear_photo)
     if count < 5 and not args.test_fixture:
         raise SystemExit(f'Only {count} recent verified news headlines retrieved. Refusing to replace live website with an incomplete issue.')
-    out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding='utf-8')
     print(f'Built {out}: {len(html.encode("utf-8"))} bytes; {count} recent news cards; {now.isoformat()}')
