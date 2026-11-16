@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from html import escape, unescape
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -536,68 +537,125 @@ def _photo_extension(blob: bytes) -> str | None:
 
 
 
-def _relevant_gear_photo_title(item: dict, filename: str) -> bool:
-    """Reject obvious non-gear imagery before using a Commons photo.
+# These two Commons photographs were checked against their actual file pages,
+# not selected by keyword search. Both depict the specified physical gear.
+# Additional categories use conservative photo-only metadata checks below.
+VERIFIED_GEAR_PHOTOS = {
+    'Work gloves': 'File:Yellow-work-glove.jpg',
+    'Protective safety glasses': 'File:Safety Eyewear.jpg',
+}
 
-    Commons search ranks text relevance, not whether an image depicts usable
-    equipment. A word like "goggles" in a costume photo is not evidence of
-    protective eyewear. This is a conservative title check, not a certification.
-    """
+# An image can be a JPEG of a sign, so filename and MIME checks alone are NOT
+# sufficient. Reject photographs *of* symbols and other unrelated material.
+NON_GEAR_IMAGE_TERMS = (
+    'sign', 'signage', 'pictogram', 'pictograph', 'symbol', 'poster',
+    'logo', 'icon', 'label', 'sticker', 'stencil', 'clipart', 'clip art',
+    'vector', 'drawing', 'diagram', 'screenshot', 'illustration',
+    'cartoon', 'render', 'infographic', 'warning', 'notice', 'mandatory',
+    'instructions', 'emblem', 'flag', 'costume', 'cosplay',
+    'jenny everywhere', 'fan art', 'anime', 'scarf',
+    'movie poster', 'comic', 'fashion show', 'museum exhibit',
+)
+
+
+def _bad_gear_image_context(text: str) -> bool:
+    value = text.lower().replace('_', ' ')
+    return any(re.search(r'(?<![a-z])' + re.escape(term) + r'(?![a-z])', value)
+               for term in NON_GEAR_IMAGE_TERMS)
+
+
+def _relevant_gear_photo_title(item: dict, filename: str) -> bool:
+    """Require physical equipment, never a symbol that mentions equipment."""
     title = filename.removeprefix('File:').lower().replace('_', ' ')
-    bad_contexts = (
-        'jenny everywhere', 'cosplay', 'costume', 'halloween', 'scarf',
-        'fan art', 'fictional', 'cartoon', 'anime', 'character',
-        'fashion show', 'movie poster', 'portrait', 'comic',
-        'museum exhibit', 'advertising poster',
-    )
-    if any(bad in title for bad in bad_contexts):
+    if _bad_gear_image_context(title):
         return False
-    if not any(k in title for k in item['photo_keywords']):
+    if not any(keyword in title for keyword in item['photo_keywords']):
         return False
+    if item['title'] == 'Work gloves':
+        workplace = ('work', 'leather glove', 'garden', 'mechanic', 'construction',
+                     'industrial', 'cut resistant', 'cut-resistant', 'protective')
+        wrong_gloves = ('boxing', 'baseball', 'fashion', 'ski glove', 'goalkeeper',
+                        'surgical', 'medical', 'motorcycle race')
+        return any(x in title for x in workplace) and not any(x in title for x in wrong_gloves)
     if item['title'] == 'Protective safety glasses':
-        # Generic goggles can be swimwear, fashion or a costume accessory.
-        # Require explicit occupational safety context in the file title.
         eyewear = ('glasses', 'goggles', 'spectacles', 'eyewear')
-        safety = ('safety', 'protective', 'industrial', 'ppe',
-                  'eye protection', 'workshop', 'work goggles')
-        return any(k in title for k in eyewear) and any(k in title for k in safety)
+        safety = ('safety', 'protective', 'industrial', 'ppe', 'workshop')
+        return any(x in title for x in eyewear) and any(x in title for x in safety)
     return True
 
-def _wikimedia_photo(item: dict, output_dir: Path) -> dict | None:
-    """Find an appropriately licensed REAL photograph and copy its bytes into the site.
 
-    The live website uses a local relative image path, so readers see the
-    photograph even if Wikimedia is temporarily unavailable afterward.
+def _camera_metadata_present(info: dict) -> bool:
+    """Commons may expose original camera EXIF even for a resized thumbnail."""
+    entries = info.get('metadata') or []
+    if not isinstance(entries, list):
+        return False
+    names = {str(e.get('name', '')).lower() for e in entries if isinstance(e, dict)}
+    return bool(names.intersection({'make', 'model', 'datetimeoriginal',
+                                    'exposuretime', 'fnumber', 'isospeedratings',
+                                    'photographicSensitivity'.lower()}))
+
+
+def _wikimedia_photo(item: dict, output_dir: Path) -> dict | None:
+    """Download a verified photograph, not a pictogram, illustration or sign.
+
+    Two manually reviewed file titles are pinned. Other gear must pass photo
+    metadata checks. If none passes, the publisher tries another gear item,
+    rather than silently publishing an unrelated picture.
     """
     api = 'https://commons.wikimedia.org/w/api.php'
-    for term in (item['photo_search'], item['title'], item['photo_keywords'][0]):
+    pinned = VERIFIED_GEAR_PHOTOS.get(item['title'])
+    searches = [None] if pinned else [item['photo_search'], item['title'], item['photo_keywords'][0]]
+    for term in searches:
         params = {
-            'action': 'query', 'generator': 'search', 'gsrsearch': 'filetype:bitmap ' + term,
-            'gsrnamespace': 6, 'gsrlimit': 20, 'prop': 'imageinfo',
-            'iiprop': 'url|mime|extmetadata', 'iiurlwidth': 720,
+            'action': 'query', 'prop': 'imageinfo',
+            'iiprop': 'url|mime|extmetadata|metadata|size', 'iiurlwidth': 720,
             'format': 'json', 'formatversion': 2,
         }
+        if pinned:
+            params['titles'] = pinned
+        else:
+            params.update({'generator': 'search',
+                           'gsrsearch': 'filetype:bitmap ' + term,
+                           'gsrnamespace': 6, 'gsrlimit': 20})
         try:
             payload = get_json(api + '?' + urlencode(params))
         except (OSError, ValueError, HTTPError, URLError, TimeoutError):
             continue
-        pages = payload.get('query', {}).get('pages', [])
-        for page in pages:
-            title = page.get('title', '').lower()
-            if any(bad in title for bad in ('logo', 'icon', 'vector', 'drawing', 'diagram', 'screenshot', 'illustration', 'emblem', 'svg')):
+        for page in payload.get('query', {}).get('pages', []):
+            filename = page.get('title', '')
+            if not filename.startswith('File:'):
                 continue
-            if not _relevant_gear_photo_title(item, page.get('title', '')):
+            if pinned:
+                if filename.lower().replace('_', ' ') != pinned.lower().replace('_', ' '):
+                    continue
+            elif not _relevant_gear_photo_title(item, filename):
+                continue
+            if _bad_gear_image_context(filename):
                 continue
             infos = page.get('imageinfo') or []
             if not infos:
                 continue
             info = infos[0]
-            if info.get('mime') not in ('image/jpeg', 'image/png', 'image/webp'):
+            # Commons rasterized safety signs are often PNG; JPEG is a strict
+            # photographic default, not proof of photographic content.
+            if info.get('mime') != 'image/jpeg':
+                continue
+            width, height = info.get('width', 0), info.get('height', 0)
+            if not isinstance(width, int) or not isinstance(height, int):
+                continue
+            if min(width, height) < 500 or width * height < 500_000:
                 continue
             meta = info.get('extmetadata') or {}
             license_name = strip_markup(meta.get('LicenseShortName', {}).get('value', ''))[:80]
             upper = license_name.upper()
             if not ('CC BY' in upper or 'CC0' in upper or 'PUBLIC DOMAIN' in upper or upper.startswith('PD-')):
+                continue
+            description = strip_markup(meta.get('ImageDescription', {}).get('value', '')).lower()
+            if _bad_gear_image_context(description):
+                continue
+            # For automatic results, require camera metadata rather than a
+            # filename alone. Pinned photographs were individually checked.
+            if not pinned and not _camera_metadata_present(info):
                 continue
             src = info.get('thumburl') or info.get('url', '')
             source = info.get('descriptionurl', '')
@@ -607,20 +665,21 @@ def _wikimedia_photo(item: dict, output_dir: Path) -> dict | None:
                 blob = http_get(src)
             except (OSError, ValueError, HTTPError, URLError, TimeoutError):
                 continue
-            ext = _photo_extension(blob)
-            if not ext or len(blob) < 5000 or len(blob) > 1_000_000:
+            if _photo_extension(blob) != '.jpg' or not 15_000 <= len(blob) <= 1_000_000:
                 continue
             output_dir.mkdir(parents=True, exist_ok=True)
-            filename = 'jay-gear-photo' + ext
-            (output_dir / filename).write_bytes(blob)
+            slug = re.sub(r'[^a-z0-9]+', '-', item['title'].lower()).strip('-')[:48]
+            digest = hashlib.sha256(blob).hexdigest()[:16]
+            image_name = f'jay-gear-{slug}-{digest}.jpg'
+            (output_dir / image_name).write_bytes(blob)
             artist = strip_markup(meta.get('Artist', {}).get('value', ''))[:100] or 'Wikimedia Commons contributor'
             license_url = strip_markup(meta.get('LicenseUrl', {}).get('value', ''))
             if urlparse(license_url).scheme != 'https':
                 license_url = source
             return {
-                'item': item, 'src': filename,
+                'item': item, 'src': image_name,
                 'alt': 'Photograph of ' + item['title'].lower(),
-                'caption': page.get('title', '').removeprefix('File:').rsplit('.', 1)[0].replace('_', ' ')[:130],
+                'caption': filename.removeprefix('File:').rsplit('.', 1)[0].replace('_', ' ')[:130],
                 'artist': artist, 'license': license_name,
                 'license_url': license_url, 'source': source,
             }
@@ -669,7 +728,7 @@ def select_daily_gear_photo(issue: datetime, output_dir: Path) -> dict:
             (output_dir / 'jay-gear-history.json').write_text(
                 json.dumps(history[-65:], ensure_ascii=False, indent=2), encoding='utf-8')
             return found
-    raise RuntimeError('Could not verify a real, licensed photograph for a new Jay gear item; keeping prior edition online.')
+    raise RuntimeError('No verified photograph of actual gear found; keeping prior edition online rather than publishing a sign or illustration.')
 
 
 def parse_timestamp(value: str) -> datetime | None:
