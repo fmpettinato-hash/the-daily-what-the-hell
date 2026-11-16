@@ -1,34 +1,42 @@
-THE DAILY WHAT THE HELL? — FREE AUTOMATIC WEBSITE PUBLISHING
+name: Publish The Daily What the Hell
 
-This is a separate source-linked feed edition of the newspaper, NOT an automatic
-copy of the ChatGPT-written 9:00 a.m. edition. It retains the exact approved
-masthead, tropical story-card design, both-island weather, the two genuine
-Azores travel photos, food, events-calendar links, Apocalypse Update,
-Jay's Corner, and horoscopes. It uses no paid API.
+on:
+  schedule:
+    # 08:15 Hawaii Standard Time (UTC-10); allows time to publish before 09:00.
+    # GitHub's scheduled runs can be delayed and are not guaranteed exact.
+    - cron: '15 18 * * *'
+  workflow_dispatch:
 
-SETUP (one time)
-1. In the GitHub repository root, upload daily_publisher.py.
-2. On GitHub, Add file > Create new file. Name it:
-     .github/workflows/publish-daily.yml
-   Paste the contents of publish-daily.yml and commit it.
-3. Repository Settings > Pages > Build and deployment > Source:
-   switch from 'Deploy from a branch' to 'GitHub Actions'.
-4. Open the Actions tab > Publish The Daily What the Hell > Run workflow.
-5. Wait for the green check, then open the permanent public website URL.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
-AUTOMATIC SCHEDULE
-The GitHub workflow is scheduled for 08:15 HST (18:15 UTC) daily so it
-usually finishes before 09:00 HST. GitHub scheduled Actions can run late
-and are not guaranteed to start at the exact minute.
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
 
-SAFETY/TRANSPARENCY
-- Requires at least 5 recent dated publisher feed headlines; otherwise it
-  fails without replacing the previously published website edition.
-- Weather comes from Open-Meteo model forecasts; official NWS alerts are
-  linked and checked separately. If a source is unavailable, the page says so.
-- The Azores travel spotlight is an evergreen feature until its content is
-  deliberately refreshed; do not mistake it for a daily-changing destination.
-- Big Island event calendars are linked, but no unverified event times are
-  invented.
-- The 9 a.m. ChatGPT newspaper notification is a separate automation.
-- Public GitHub Pages hosting and public-repo Actions require no paid plan.
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out approved newspaper template
+        uses: actions/checkout@v4
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate today's source-linked edition
+        run: python daily_publisher.py --template index.html --output public/index.html
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload the website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Publish to permanent link
+        id: deployment
+        uses: actions/deploy-pages@v4
